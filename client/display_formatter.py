@@ -64,18 +64,15 @@ class DisplayFormatter:
         """
         Format and print weekly schedule as a table.
         
-        Design Decision: ASCII table format
-        Why? - Clear visual representation
-             - Works in any terminal
-             - No external dependencies
+        Design Decision: Privacy-focused display
+        Why? - Users don't need to see who reserved slots
+             - Only show Available/Unavailable status
+             - Cleaner, more readable table
         
-        Format:
-          ┌──────┬──────────────┬──────────────┬─────
-          │ Time │ MON          │ TUE          │ WED ...
-          ├──────┼──────────────┼──────────────┼─────
-          │ 09:00│ Available    │ Available    │ user1
-          │ 10:00│ user2        │ Available    │ Available
-          ...
+        Enhanced UI:
+        - Fixed-width columns for proper alignment
+        - Color-coded status (green=available, red=unavailable)
+        - Clean ASCII borders
         """
         days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
         hours = list(range(9, 23))  # 9 to 22
@@ -86,54 +83,43 @@ class DisplayFormatter:
         reset = DisplayFormatter.COLORS['reset']
         
         # Header
-        print(f"\n{bold}Weekly Schedule:{reset}\n")
+        print(f"\n{bold}{'='*100}{reset}")
+        print(f"{bold}{'WEEKLY SCHEDULE':^100}{reset}")
+        print(f"{bold}{'='*100}{reset}\n")
         
-        # Print header row
-        header = f"│ {'Time':<6} │"
-        for day in days:
-            header += f" {day:<12} │"
+        # Top border - 7 days * 12 chars + time column 7 + borders
+        print("┌───────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────────┐")
         
-        separator = "├─" + "─" * 8 + "┼"
-        for _ in days:
-            separator += "─" * 14 + "┼"
+        # Header row
+        print(f"│ Time  │    MON     │    TUE     │    WED     │    THU     │    FRI     │    SAT     │    SUN     │")
         
-        top_border = "┌─" + "─" * 8 + "┬"
-        for _ in days:
-            top_border += "─" * 14 + "┬"
-        top_border = top_border[:-1] + "┐"
-        
-        print(top_border)
-        print(header)
-        print(separator)
+        # Separator after header
+        print("├───────┼────────────┼────────────┼────────────┼────────────┼────────────┼────────────┼────────────┤")
         
         # Print each hour row
         for hour in hours:
             time_str = f"{hour:02d}:00"
-            row = f"│ {time_str:<6} │"
+            cells = [f" {time_str:<5} │"]
             
             for day in days:
                 # Find slot for this day and hour
                 day_schedule = schedule.get(day, [])
-                slot = next((s for s in day_schedule if s['hour'] == hour), None)
+                slot = next((s for s in day_schedule if int(s['hour']) == hour), None)
                 
-                if slot:
-                    if slot['available']:
-                        status = f"{green}Available{reset}"
-                    else:
-                        status = f"{red}{slot['reserved_by']}{reset}"
+                if slot and slot['available']:
+                    # Available - 9 chars, need 12 total (3 spaces padding)
+                    cells.append(f" {green}Available{reset}  │")
+                elif slot and not slot['available']:
+                    # Reserved - 8 chars, need 12 total (4 spaces padding)
+                    cells.append(f"  {red}Reserved{reset}  │")
                 else:
-                    status = "N/A"
-                
-                row += f" {status:<12} │"
+                    # No data - centered
+                    cells.append(f"    ---     │")
             
-            print(row)
+            print("│" + "".join(cells))
         
         # Bottom border
-        bottom_border = "└─" + "─" * 8 + "┴"
-        for _ in days:
-            bottom_border += "─" * 14 + "┴"
-        bottom_border = bottom_border[:-1] + "┘"
-        print(bottom_border)
+        print("└───────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────────┘")
         print()
     
     @staticmethod
@@ -144,83 +130,137 @@ class DisplayFormatter:
         Args:
             day: Day name (MON, TUE, etc.)
             schedule: List of time slots with availability
+            
+        Enhanced UI:
+        - Privacy: Don't show other users' names
+        - Clean table format
+        - Color-coded status
         """
         bold = DisplayFormatter.COLORS['bold']
         green = DisplayFormatter.COLORS['green']
         red = DisplayFormatter.COLORS['red']
+        cyan = DisplayFormatter.COLORS['cyan']
         reset = DisplayFormatter.COLORS['reset']
         
-        print(f"\n{bold}Schedule for {day}:{reset}\n")
-        print("┌──────────────┬─────────────────┬─────────────┐")
-        print("│ Time Slot    │ Status          │ Reserved By │")
-        print("├──────────────┼─────────────────┼─────────────┤")
+        print(f"\n{bold}{'='*50}{reset}")
+        print(f"{bold}{f'SCHEDULE FOR {day}':^50}{reset}")
+        print(f"{bold}{'='*50}{reset}\n")
+        
+        print("┌────────────────┬──────────────────┐")
+        print("│  Time Slot     │      Status      │")
+        print("├────────────────┼──────────────────┤")
         
         for slot in schedule:
             time_slot = slot['time_slot']
             
             if slot['available']:
-                status = f"{green}Available{reset}"
-                reserved_by = "-"
+                status = f"{green}✓ Available{reset}"
             else:
-                status = f"{red}Reserved{reset}"
-                reserved_by = slot['reserved_by']
+                status = f"{red}✗ Reserved{reset}"
             
-            print(f"│ {time_slot:<12} │ {status:<15} │ {reserved_by:<11} │")
+            # Center-align for better readability
+            print(f"│ {cyan}{time_slot:^14}{reset} │ {status:^16} │")
         
-        print("└──────────────┴─────────────────┴─────────────┘")
+        print("└────────────────┴──────────────────┘")
         print()
     
     @staticmethod
     def format_reservations(reservations: List[Dict]):
         """
-        Format and print user's reservations.
+        Format and print user's own reservations.
         
         Args:
             reservations: List of reservation dicts
+            
+        Enhanced UI:
+        - Shows only user's own reservations
+        - Clean, readable format
+        - Color highlights
         """
         bold = DisplayFormatter.COLORS['bold']
         cyan = DisplayFormatter.COLORS['cyan']
+        green = DisplayFormatter.COLORS['green']
         reset = DisplayFormatter.COLORS['reset']
         
         if not reservations:
             DisplayFormatter.info("You have no reservations.")
             return
         
-        print(f"\n{bold}Your Reservations:{reset}\n")
-        print("┌─────┬──────────────┬──────────┐")
-        print("│ Day │ Time Slot    │ Username │")
-        print("├─────┼──────────────┼──────────┤")
+        print(f"\n{bold}{'='*50}{reset}")
+        print(f"{bold}{'YOUR RESERVATIONS':^50}{reset}")
+        print(f"{bold}{'='*50}{reset}\n")
+        
+        print("┌──────────┬────────────────────────┐")
+        print("│   Day    │      Time Slot         │")
+        print("├──────────┼────────────────────────┤")
         
         for res in reservations:
             day = res['day']
             time_slot = res['time_slot']
-            username = res['username']
-            print(f"│ {cyan}{day:<3}{reset} │ {time_slot:<12} │ {username:<8} │")
+            print(f"│ {cyan}{day:^8}{reset} │ {green}{time_slot:^22}{reset} │")
         
-        print("└─────┴──────────────┴──────────┘")
-        print()
+        print("└──────────┴────────────────────────┘")
+        print(f"\n{bold}Total: {len(reservations)} reservation(s){reset}\n")
     
     @staticmethod
     def print_help():
-        """Print available commands."""
+        """Print available commands with enhanced formatting."""
         bold = DisplayFormatter.COLORS['bold']
         cyan = DisplayFormatter.COLORS['cyan']
+        green = DisplayFormatter.COLORS['green']
+        yellow = DisplayFormatter.COLORS['yellow']
         reset = DisplayFormatter.COLORS['reset']
         
-        print(f"\n{bold}Available Commands:{reset}\n")
+        print(f"\n{bold}{'='*70}{reset}")
+        print(f"{bold}{'AVAILABLE COMMANDS':^70}{reset}")
+        print(f"{bold}{'='*70}{reset}\n")
         
-        commands = [
-            ("login <username> <password>", "Login to the system"),
-            ("show_list", "Show weekly schedule"),
-            ("show_day <DAY>", "Show schedule for specific day (MON, TUE, etc.)"),
-            ("show_my_res", "Show your reservations"),
-            ("make_res <DAY> <HOUR>", "Make a reservation (e.g., make_res WED 14)"),
-            ("cancel_res <DAY>", "Cancel your reservation for a day"),
-            ("help", "Show this help message"),
-            ("exit", "Exit the program"),
+        # Group commands by category
+        auth_cmds = [
+            ("login <username> <password>", "Login to the system", "login user1 1")
         ]
         
-        for cmd, desc in commands:
-            print(f"  {cyan}{cmd:<30}{reset} - {desc}")
+        view_cmds = [
+            ("show_list", "Show weekly schedule for all days", "show_list"),
+            ("show_day <DAY>", "Show schedule for specific day", "show_day WED"),
+            ("show_my_res", "Show your reservations", "show_my_res")
+        ]
         
-        print()
+        manage_cmds = [
+            ("make_res <DAY> <HOUR>", "Make a new reservation", "make_res WED 14"),
+            ("cancel_res <DAY>", "Cancel your reservation", "cancel_res MON")
+        ]
+        
+        other_cmds = [
+            ("help", "Show this help message", "help"),
+            ("exit", "Exit the program", "exit")
+        ]
+        
+        # Print Authentication
+        print(f"{yellow}▶ Authentication:{reset}")
+        for cmd, desc, example in auth_cmds:
+            print(f"  {cyan}{cmd:<30}{reset} {desc}")
+            print(f"    {green}Example: {example}{reset}\n")
+        
+        # Print View Commands
+        print(f"{yellow}▶ View Schedule:{reset}")
+        for cmd, desc, example in view_cmds:
+            print(f"  {cyan}{cmd:<30}{reset} {desc}")
+            print(f"    {green}Example: {example}{reset}\n")
+        
+        # Print Management Commands
+        print(f"{yellow}▶ Manage Reservations:{reset}")
+        for cmd, desc, example in manage_cmds:
+            print(f"  {cyan}{cmd:<30}{reset} {desc}")
+            print(f"    {green}Example: {example}{reset}\n")
+        
+        # Print Other Commands
+        print(f"{yellow}▶ Other:{reset}")
+        for cmd, desc, example in other_cmds:
+            print(f"  {cyan}{cmd:<30}{reset} {desc}")
+            print(f"    {green}Example: {example}{reset}\n")
+        
+        print(f"{bold}{'─'*70}{reset}")
+        print(f"{bold}Note:{reset} Days are: MON, TUE, WED, THU, FRI, SAT, SUN")
+        print(f"{bold}Note:{reset} Hours are: 9-22 (e.g., 9 = 09:00-10:00, 14 = 14:00-15:00)")
+        print(f"{bold}{'─'*70}{reset}\n")

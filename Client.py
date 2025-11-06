@@ -36,12 +36,16 @@ class TennisCourtClient:
         self.session = SessionManager()
         self.running = True
         
-        print("=" * 60)
-        print("Tennis Court Reservation System - Client")
-        print("=" * 60)
-        DisplayFormatter.info(f"Connected to server at {host}:{port}")
-        DisplayFormatter.warning("Type 'help' for available commands")
-        print()
+        # Enhanced welcome banner
+        print("\n" + "=" * 70)
+        print("║" + " " * 68 + "║")
+        print("║" + "    🎾  TENNIS COURT RESERVATION SYSTEM  🎾    ".center(68) + "║")
+        print("║" + " " * 68 + "║")
+        print("=" * 70)
+        DisplayFormatter.success(f"Connected to server at {host}:{port}")
+        DisplayFormatter.warning("Type 'help' to see available commands")
+        DisplayFormatter.info("Login required before making reservations")
+        print("=" * 70 + "\n")
     
     def run(self):
         """
